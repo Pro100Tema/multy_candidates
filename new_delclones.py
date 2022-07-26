@@ -81,7 +81,8 @@ def delclones(dataset, compare_lst, sort_param):
             check_lst = np.append(check_lst,((runvar.getValue(dataset[int(nuniq_idx[i])]), evtvar.getValue(dataset[int(nuniq_idx[i])]))))
             index_lst = np.append(index_lst, int(nuniq_idx[i]))
 
-        if(runvar.getValue(dataset[int(nuniq_idx[i])]) == runvar.getValue(dataset[int(nuniq_idx[j])]) and evtvar.getValue(dataset[int(nuniq_idx[i])]) == evtvar.getValue(dataset[int(nuniq_idx[j])])):
+        if(runvar.getValue(dataset[int(nuniq_idx[i])]) == runvar.getValue(dataset[int(nuniq_idx[j])]) and 
+           evtvar.getValue(dataset[int(nuniq_idx[i])]) == evtvar.getValue(dataset[int(nuniq_idx[j])])):
             index_lst = np.append(index_lst, int(nuniq_idx[j]))
             if(i == len(nuniq_idx)-2):
               k = analyse(index_lst, sort_param)
