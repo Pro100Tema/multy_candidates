@@ -14,6 +14,7 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
     store = dataset.store()
     n = store.size()
     array_info = store.getBatches(0, n)
+    vars = dataset.get()
 
     if not isinstance(store, ROOT.RooVectorDataStore):
         dataset.ConvertToVectorStore()
@@ -21,9 +22,11 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
     # using numpy structed array
     data = np.zeros(n, dtype={'names': (var_lst), 'formats':('f8', 'f8', (n ,len(var_lst)))})
 
+    count = 0
     for x in array_info:
-        if x.first in var_lst:
-             data[x.first] = np.frombuffer(x.data, dtype = np.float64, count = n)
+        if vars[count].GetName() in var_lst:
+             data[vars[count].GetName()] = x.second
+        count = count + 1
     return data
 
 
