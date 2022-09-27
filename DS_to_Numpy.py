@@ -16,10 +16,12 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
     vars = dataset.get()
 
     if not isinstance(store, ROOT.RooVectorDataStore):
-        #dataset.ConvertToVectorStore()
-        variables = store.get()
-        store_name = store.GetName()
-        tmp_store = ROOT.RooVectorDataStore(store, variables, store_name)
+        if isinstance(store, ROOT.RooTreeDataStore):
+            dataset.ConvertToVectorStore()
+        else:
+            variables = store.get()
+            store_name = store.GetName()
+            tmp_store = ROOT.RooVectorDataStore(store, variables, store_name)
         
     # using numpy structed array
     data = np.zeros(n, dtype={'names': (var_lst), 'formats':('f8', 'f8', (n ,len(var_lst)))})
@@ -30,7 +32,8 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
     count_vars = len(vars)
     data_limit = num_entries * count_vars
     num_limit = 1000000
-
+    remainder = n % num_limit
+    
     if data_limit < num_limit:
         array_info = store.getBatches(0, n)
         count = 0
@@ -38,7 +41,28 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
         if vars[count].GetName() in var_lst:
              data[vars[count].GetName()] = x.second
         count = count + 1
-    else: 
+    else:
+        for i in range(0, n, num_limit):
+            if i == n - remainder:
+                #print(i, i + remainder)
+                array_info = store.getBatches(i, i+remainder)
+            else:
+                #print(i, i + num_limit)
+                data_part = []
+                
+                array_info = store.getBatches(i, i+num_limit)
+                #print(array_info)
+                count = 0
+                for x in array_info:
+                    if vars[count].GetName() in var_lst:
+                        data_part.append(x.second)
+                    count = count + 1
+                #print(data_part)
+                array_info = None
+                data_part = np.array(data_part)
+                #print(data_part)
+        
+        '''
         for i in range(0, n, num_limit):
             if i == n:
                 break
@@ -49,6 +73,7 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
                     if vars[count].GetName() in var_lst:
                         data[vars[count].GetName()] = x.second
                     count = count + 1
+        '''            
     return data
 
 
@@ -56,10 +81,12 @@ def DS_to_Numpy_for_new_version(dataset, var_lst):
     store = dataset.store()
 
     if not isinstance(store, ROOT.RooVectorDataStore):
-        #dataset.ConvertToVectorStore()
-        variables = store.get()
-        store_name = store.GetName()
-        tmp_store = ROOT.RooVectorDataStore(store, variables, store_name)
+        if isinstance(store, ROOT.RooTreeDataStore):
+            dataset.ConvertToVectorStore()
+        else:
+            variables = store.get()
+            store_name = store.GetName()
+            tmp_store = ROOT.RooVectorDataStore(store, variables, store_name)
 
     array_info = store.getArrays()
     n = array_info.size
