@@ -33,47 +33,31 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
     data_limit = num_entries * count_vars
     num_limit = 1000000
     remainder = n % num_limit
-    
+
     if data_limit < num_limit:
         array_info = store.getBatches(0, n)
         count = 0
-    for x in array_info:
-        if vars[count].GetName() in var_lst:
-             data[vars[count].GetName()] = x.second
-        count = count + 1
-    else:
+        for x in array_info:
+            if vars[count].GetName() in var_lst:
+                data[vars[count].GetName()] = x.second
+            count = count + 1
+    else: 
+        data_part = []
         for i in range(0, n, num_limit):
             if i == n - remainder:
-                #print(i, i + remainder)
-                array_info = store.getBatches(i, i+remainder)
+                array_info = store.getBatches(i, remainder)
             else:
-                #print(i, i + num_limit)
-                data_part = []
-                
-                array_info = store.getBatches(i, i+num_limit)
-                #print(array_info)
-                count = 0
-                for x in array_info:
-                    if vars[count].GetName() in var_lst:
-                        data_part.append(x.second)
-                    count = count + 1
-                #print(data_part)
-                array_info = None
-                data_part = np.array(data_part)
-                #print(data_part)
+                array_info = store.getBatches(i, num_limit)
+            count = 0
+            for x in array_info:
+                if vars[count].GetName() in var_lst:
+                    data_part.append(str(x.second))
+                    #print(data_part)
+                count = count + 1
+        data_np = np.array(data_part, dtype= object)
         
-        '''
-        for i in range(0, n, num_limit):
-            if i == n:
-                break
-            else:
-                array_info = store.getBatches(i, i+1)
-                count = 0
-                for x in array_info:
-                    if vars[count].GetName() in var_lst:
-                        data[vars[count].GetName()] = x.second
-                    count = count + 1
-        '''            
+        #print(data)
+        #print(data[0])
     return data
 
 
