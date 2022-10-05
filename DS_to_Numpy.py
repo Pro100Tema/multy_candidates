@@ -32,7 +32,7 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
     count_vars = len(vars)
     data_limit = num_entries * count_vars
     num_limit = 1000000
-    remainder = n % num_limit
+    nb,r = divmod(n, num_limit)
 
     if data_limit < num_limit:
         array_info = store.getBatches(0, n)
@@ -42,12 +42,16 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
                 data[vars[count].GetName()] = x.second
             count = count + 1
     else: 
+        rargs = [(i*num_limit, num_limit) for i in range(nb)] + [(nb * num_limit,r)]
+        print(rargs)
         data_part = []
-        for i in range(0, n, num_limit):
-            if i == n - remainder:
-                array_info = store.getBatches(i, remainder)
-            else:
-                array_info = store.getBatches(i, num_limit)
+        for first, num in rargs:
+            array_info = store.getBatches(first, num)
+        #for i in range(0, n, num_limit):
+        #    if i == n - remainder:
+        #        array_info = store.getBatches(i, remainder)
+        #    else:
+        #        array_info = store.getBatches(i, num_limit)
             count = 0
             for x in array_info:
                 if vars[count].GetName() in var_lst:
@@ -56,9 +60,9 @@ def DS_to_Numpy_for_old_version(dataset, var_lst):
                 count = count + 1
         data_np = np.array(data_part, dtype= object)
         
-        #print(data)
-        #print(data[0])
-    return data
+        print(len(data_np))
+        print(data_np[0])
+    return data_np
 
 
 def DS_to_Numpy_for_new_version(dataset, var_lst):
