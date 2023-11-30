@@ -11,24 +11,40 @@ import os
 # output: 
 # data - numpy array with values of the required variables
 
-def add_weight(ds, data, var_lst):
-    weight_name = ds.weightVar().GetName()
-    if not weight_name in ds:
-            weight_array = np.zeros(ds.numEntries(), dtype=np.float64)
-            for i in range(ds.numEntries()):
-                ds.get(i)
-                weight_array[i] = ds.weight()
-            if weight_name in var_lst:
-                data[weight_name] = weight_array
-            else:
-                print("No weigths vars in variables list")
-                exit()
+def add_weight(ds, data, weight_var):
+    if ds.isWeighted():
+        weight_name = ds.weightVar().GetName()
+        if not weight_name in ds:
+                weight_array = np.zeros(ds.numEntries(), dtype=np.float64)
+                for i in range(ds.numEntries()):
+                    ds.get(i)
+                    weight_array[i] = ds.weight()
+                if weight_name in weight_var:
+                    data[weight_name] = weight_array
+                else:
+                    print("No weigths vars in weights list")
+                    exit()
+        else:
+            print(f"Field with name '{weight_name}' already exists in the data")
+            exit()
+    else: 
+        print("Dataset is not weighted")
+        exit()
     return data
 
-def DS_to_Numpy_for_old_version(dataset, var_lst, weight): 
-    store = dataset.store()
-    n = store.size()
-    vars = dataset.get()
+
+def ds_to_numpy_for_old_version(dataset, var_lst, weight):
+    len_ds_vars = dataset.get().getSize()
+    # если в списке необходимых переменных меньше, чем в датасете, то сначала делаем маленький датасет и только потом преобразование в numpy массив
+    if len(var_lst) < len_ds_vars/2:
+        subset_ds = dataset.subset(var_lst)
+        store = subset_ds.store()
+        n = store.size()
+        vars = subset_ds.get()
+    else:    
+        store = dataset.store()
+        n = store.size()
+        vars = dataset.get()
 
     if not isinstance(store, ROOT.RooVectorDataStore):
         if isinstance(store, ROOT.RooTreeDataStore):
@@ -61,7 +77,6 @@ def DS_to_Numpy_for_old_version(dataset, var_lst, weight):
             count = count + 1
     else: 
         rargs = [(i*num_limit, num_limit) for i in range(nb)] + [(nb * num_limit,r)]
-        #print(rargs)
         data_part = []
         for first, num in rargs:
             array_info = store.getBatches(first, num)
@@ -73,17 +88,22 @@ def DS_to_Numpy_for_old_version(dataset, var_lst, weight):
                 count = count + 1
         data = np.array(data_part, dtype= object)
 
-        #print(len(data))
-        #print(data[0])
-
-    if weight and dataset.isWeighted():
+    if weight: #and dataset.isWeighted():
         add_weight(dataset, data, var_lst)
 
     return data
 
 
-def DS_to_Numpy_for_new_version(dataset, var_lst, weight):
-    store = dataset.store()
+def ds_to_numpy_for_mid_version(dataset, var_lst, weight_var):
+
+    #количество переменных в начальном датасете
+    len_ds_vars = dataset.get().getSize()
+    # если в списке необходимых переменных меньше, чем в датасете, то сначала делаем маленький датасет и только потом преобразование в numpy массив
+    if len(var_lst) < len_ds_vars/2:
+        subset_ds = dataset.subset(var_lst)
+        store = subset_ds.store()
+    else:    
+        store = dataset.store()
 
     if not isinstance(store, ROOT.RooVectorDataStore):
         if isinstance(store, ROOT.RooTreeDataStore):
@@ -92,7 +112,7 @@ def DS_to_Numpy_for_new_version(dataset, var_lst, weight):
             variables = store.get()
             store_name = store.GetName()
             store = ROOT.RooVectorDataStore(store, variables, store_name)
-
+    
     array_info = store.getArrays()
     n = array_info.size
     
@@ -107,39 +127,40 @@ def DS_to_Numpy_for_new_version(dataset, var_lst, weight):
     for x in array_info.cats:
         if x.name in var_lst:
              data[x.name] = np.frombuffer(x.data, dtype = np.int32, count = n)
-    #print(data)
-    if weight and dataset.isWeighted():
+            
+    if weight_var: #and dataset.isWeighted():
         add_weight(dataset, data, var_lst)
 
     return data
 
-def ds_to_numpy(dataset, var_lst, weight):
-    ds_new = dataset.subset(var_lst)
-    data = ds_new.to_numpy()
+def ds_to_numpy_new_version(dataset, var_lst, weight_var):
+    var_lst2 = var_lst.copy()
+    if weight_var and dataset.isWeighted():
+        weight_name = dataset.weightVar().GetName()
+        if weight_name in var_lst2:
+            var_lst2.remove(weight_name)
+        vars_subset = var_lst2.copy()
+        ds_new = dataset.subset(vars_subset)
+        data = ds_new.to_numpy()
+    else:
+        ds_new = dataset.subset(var_lst)
+        data = ds_new.to_numpy()
 
     #create structed array
     dtype_list = [(key, data[key].dtype) for key in data.keys()]
     structured_array = np.array(list(zip(*data.values())), dtype=dtype_list)
 
-    if weight and dataset.isWeighted():
+    if weight_var:
         add_weight(dataset, data, var_lst)
 
     return structured_array
 
-
-#def DS_to_Numpy(dataset, var_lst):
-#    # check if root version < 6.27.1
-#    if ROOT.gROOT.GetVersionInt() < 62701:
-#        DS_to_Numpy_for_old_version(dataset, var_lst)
-#    else:
-#        DS_to_Numpy_for_new_version(dataset, var_lst)
-
-def DS_to_Numpy(dataset, var_lst, weight = False):
+def ds_to_numpy(dataset, var_lst, weight_var = False):
     root_version = ROOT.gROOT.GetVersionInt()
     # check if root version < 6.24.0
     if root_version < 62400:
-        DS_to_Numpy_for_old_version(dataset, var_lst, weight)
+        ds_to_numpy_for_old_version(dataset, var_lst, weight_var)
     elif 62400 <= root_version < 62600:
-        DS_to_Numpy_for_new_version(dataset, var_lst, weight)
+        ds_to_numpy_for_mid_version(dataset, var_lst, weight_var)
     else:
-        ds_to_numpy(dataset, var_lst, weight)
+        ds_to_numpy_new_version(dataset, var_lst, weight_var)
