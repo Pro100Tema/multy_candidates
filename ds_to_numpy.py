@@ -20,6 +20,8 @@ def add_weight(ds, data, weight_var):
                     ds.get(i)
                     weight_array[i] = ds.weight()
                 if weight_name in weight_var:
+                #    print("+++")
+                #    print(weight_name)
                     data[weight_name] = weight_array
                 else:
                     print("No weigths vars in weights list")
@@ -30,10 +32,10 @@ def add_weight(ds, data, weight_var):
     else: 
         print("Dataset is not weighted")
         exit()
+    #print(data)
     return data
 
-
-def ds_to_numpy_for_old_version(dataset, var_lst, weight):
+def ds_to_numpy_for_old_version(dataset, var_lst, weight_var):
     len_ds_vars = dataset.get().getSize()
     # если в списке необходимых переменных меньше, чем в датасете, то сначала делаем маленький датасет и только потом преобразование в numpy массив
     if len(var_lst) < len_ds_vars/2:
@@ -68,27 +70,28 @@ def ds_to_numpy_for_old_version(dataset, var_lst, weight):
     remainder = n % num_limit
     nb,r = divmod(n, num_limit)
 
+    print(vars)
     if data_limit < num_limit:
         array_info = store.getBatches(0, n)
         count = 0
         for x in array_info:
-            if vars[count].GetName() in var_lst:
-                data[vars[count].GetName()] = x.second
+            if count < len(var_lst):
+                data[var_lst[count]] = x.second
             count = count + 1
     else: 
         rargs = [(i*num_limit, num_limit) for i in range(nb)] + [(nb * num_limit,r)]
+        #print(rargs)
         data_part = []
         for first, num in rargs:
             array_info = store.getBatches(first, num)
             count = 0
             for x in array_info:
-                if vars[count].GetName() in var_lst:
+                if count < len(var_lst):
                     data_part.append(str(x.second))
-                    #print(data_part)
                 count = count + 1
         data = np.array(data_part, dtype= object)
 
-    if weight: #and dataset.isWeighted():
+    if weight_var:
         add_weight(dataset, data, var_lst)
 
     return data
@@ -128,18 +131,21 @@ def ds_to_numpy_for_mid_version(dataset, var_lst, weight_var):
         if x.name in var_lst:
              data[x.name] = np.frombuffer(x.data, dtype = np.int32, count = n)
             
-    if weight_var: #and dataset.isWeighted():
+    if weight_var:
         add_weight(dataset, data, var_lst)
-
+        
     return data
 
 def ds_to_numpy_new_version(dataset, var_lst, weight_var):
     var_lst2 = var_lst.copy()
     if weight_var and dataset.isWeighted():
+        #print("+")
         weight_name = dataset.weightVar().GetName()
         if weight_name in var_lst2:
             var_lst2.remove(weight_name)
         vars_subset = var_lst2.copy()
+        #print("subset: ", vars_subset)
+        #print("var_lst: ", var_lst)
         ds_new = dataset.subset(vars_subset)
         data = ds_new.to_numpy()
     else:
@@ -159,8 +165,9 @@ def ds_to_numpy(dataset, var_lst, weight_var = False):
     root_version = ROOT.gROOT.GetVersionInt()
     # check if root version < 6.24.0
     if root_version < 62400:
-        ds_to_numpy_for_old_version(dataset, var_lst, weight_var)
+        np_array = ds_to_numpy_for_old_version(dataset, var_lst, weight_var)
     elif 62400 <= root_version < 62600:
-        ds_to_numpy_for_mid_version(dataset, var_lst, weight_var)
+        np_array = ds_to_numpy_for_mid_version(dataset, var_lst, weight_var)
     else:
-        ds_to_numpy_new_version(dataset, var_lst, weight_var)
+        np_array = ds_to_numpy_new_version(dataset, var_lst, weight_var)
+    return np_array
