@@ -42,7 +42,6 @@ def test_small_ds():
         data.add(ROOT.RooArgSet(x, y))
 
     ws = ds_to_numpy(data, ['x', 'y'], False)
-    print(ws)
 
 
 def test_small_ds_with_weights():
@@ -64,7 +63,6 @@ def test_small_ds_with_weights():
 
     ds = data.makeWeighted('x+y')
     ws = ds_to_numpy(ds, ['x', 'y', 'W'], True)
-    print(ws)
 
 
 def test_ds_with_weights():
@@ -121,7 +119,6 @@ def test_large_ds_with_weights():
     var_lst = ['x2', 'x3','x4', 'x5', 'x6','x7', 'x8', 'x9','x10', 'x1', 'x12','x13', 'x14', 'x15','x16', 'x17', 'x18','x19', 'x20', 'x21','x22', 'x23', 'x24','x25', 'x26', 'x27','x28', 'x29', 'x30','x31', 'x32', 'x33',
                'x34', 'x35', 'x36','x37', 'x38', 'x39','x40', 'x41', 'x42','x43', 'x44', 'x45','x46', 'x47', 'x48','x49', 'x50', 'x51','x52', 'x53', 'x54','x55', 'x56', 'x57','x58', 'x59', 'x60']
     ws = ds_to_numpy(ds, var_lst, False)
-    print(ws)
     #ws2 = ds_to_numpy(ds, var_lst, True)
 
 def test_large_ds_without_weights():
@@ -147,7 +144,6 @@ def test_large_ds_without_weights():
                'x34', 'x35', 'x36','x37', 'x38', 'x39','x40', 'x41', 'x42','x43', 'x44', 'x45','x46', 'x47', 'x48','x49', 'x50', 'x51','x52', 'x53', 'x54','x55', 'x56', 'x57','x58', 'x59', 'x60']
     
     ws = ds_to_numpy(data, var_lst, False)
-    print(ws)
 
 
 if '__main__' == __name__ :
