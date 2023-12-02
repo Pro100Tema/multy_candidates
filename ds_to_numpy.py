@@ -70,10 +70,8 @@ def ds_to_numpy_for_old_version(dataset, var_lst, weight_var):
     count_vars = len(vars)
     data_limit = num_entries * count_vars
     num_limit = 1000000
-    remainder = n % num_limit
     nb,r = divmod(n, num_limit)
 
-    print(vars)
     if data_limit < num_limit:
         array_info = store.getBatches(0, n)
         count = 0
