@@ -11,6 +11,11 @@ import os
 # output: 
 # data - numpy array with values of the required variables
 
+#Check the list of variables for duplicates
+def find_dublicates_in_var_list(var_lst):
+    return len(var_lst) != len(set(var_lst))
+
+#add weight variable in numpy array
 def add_weight(ds, data, weight_var):
     if ds.isWeighted():
         weight_name = ds.weightVar().GetName()
@@ -20,24 +25,23 @@ def add_weight(ds, data, weight_var):
                     ds.get(i)
                     weight_array[i] = ds.weight()
                 if weight_name in weight_var:
-                #    print("+++")
-                #    print(weight_name)
                     data[weight_name] = weight_array
                 else:
-                    print("No weigths vars in weights list")
-                    exit()
+                    raise ValueError("No weigths vars in variable list")
         else:
-            print(f"Field with name '{weight_name}' already exists in the data")
-            exit()
+            raise ValueError(f"Field with name '{weight_name}' already exists in the data")
     else: 
-        print("Dataset is not weighted")
-        exit()
-    #print(data)
+        raise ValueError("Dataset is not weighted")
     return data
 
 def ds_to_numpy_for_old_version(dataset, var_lst, weight_var):
+
+    if find_dublicates_in_var_list(var_lst):
+        raise ValueError("The list contains duplicate values")
+
     len_ds_vars = dataset.get().getSize()
-    # если в списке необходимых переменных меньше, чем в датасете, то сначала делаем маленький датасет и только потом преобразование в numpy массив
+    # If the list of required variables is smaller than the initial dataset, 
+    # create a smaller dataset first before converting it into a numpy array
     if len(var_lst) < len_ds_vars/2:
         subset_ds = dataset.subset(var_lst)
         store = subset_ds.store()
@@ -59,7 +63,6 @@ def ds_to_numpy_for_old_version(dataset, var_lst, weight_var):
     # using numpy structed array
     format = [(name, 'f8') for name in var_lst]
     data = np.zeros(n, dtype= format)
-    #data = np.zeros(n, dtype={'names': (var_lst), 'formats':('f8', 'f8', (n ,len(var_lst)))})
 
     # for large datasets
     # check batch size * var size < 10^6 
@@ -80,7 +83,6 @@ def ds_to_numpy_for_old_version(dataset, var_lst, weight_var):
             count = count + 1
     else: 
         rargs = [(i*num_limit, num_limit) for i in range(nb)] + [(nb * num_limit,r)]
-        #print(rargs)
         data_part = []
         for first, num in rargs:
             array_info = store.getBatches(first, num)
@@ -99,9 +101,13 @@ def ds_to_numpy_for_old_version(dataset, var_lst, weight_var):
 
 def ds_to_numpy_for_mid_version(dataset, var_lst, weight_var):
 
-    #количество переменных в начальном датасете
+    if find_dublicates_in_var_list(var_lst):
+        raise ValueError("The list contains duplicate values")
+    
+    #The number of variables in the initial dataset
     len_ds_vars = dataset.get().getSize()
-    # если в списке необходимых переменных меньше, чем в датасете, то сначала делаем маленький датасет и только потом преобразование в numpy массив
+    # If the list of required variables is smaller than the initial dataset, 
+    # create a smaller dataset first before converting it into a numpy array
     if len(var_lst) < len_ds_vars/2:
         subset_ds = dataset.subset(var_lst)
         store = subset_ds.store()
@@ -130,22 +136,23 @@ def ds_to_numpy_for_mid_version(dataset, var_lst, weight_var):
     for x in array_info.cats:
         if x.name in var_lst:
              data[x.name] = np.frombuffer(x.data, dtype = np.int32, count = n)
-            
     if weight_var:
         add_weight(dataset, data, var_lst)
-        
+
     return data
 
 def ds_to_numpy_new_version(dataset, var_lst, weight_var):
+
+    if find_dublicates_in_var_list(var_lst):
+        raise ValueError("The list contains duplicate values")
+
     var_lst2 = var_lst.copy()
+    #remove weight variable from variables list
     if weight_var and dataset.isWeighted():
-        #print("+")
         weight_name = dataset.weightVar().GetName()
         if weight_name in var_lst2:
             var_lst2.remove(weight_name)
         vars_subset = var_lst2.copy()
-        #print("subset: ", vars_subset)
-        #print("var_lst: ", var_lst)
         ds_new = dataset.subset(vars_subset)
         data = ds_new.to_numpy()
     else:
@@ -170,4 +177,5 @@ def ds_to_numpy(dataset, var_lst, weight_var = False):
         np_array = ds_to_numpy_for_mid_version(dataset, var_lst, weight_var)
     else:
         np_array = ds_to_numpy_new_version(dataset, var_lst, weight_var)
+    
     return np_array
